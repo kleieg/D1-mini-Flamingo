@@ -13,21 +13,15 @@
 
 #include <SoftwareSerial.h>
 
-#include "MHZ19.h"
 
 #include <SPI.h>
 #include <Wire.h>
 
-#include "Adafruit_SHT31.h"
-#include <BME280I2C.h>
 
-#include "VindriktningPM25.h"
 #include "Settings.h"
 #include "WLAN_Credentials.h"
 #include "config.h"
 #include "log.h"
-
-#include "utils.h"
 
 //<<<<<<<<<<<<<<<<
 // current settings
@@ -45,7 +39,7 @@ PersistentState g_state;
 String Hostname;
 
 // define sensors & values
-Adafruit_SHT31 sht31 = Adafruit_SHT31();
+
 
 BME280I2C::Settings settings(
    BME280::OSR_X1,
@@ -67,12 +61,10 @@ float Pressure = 0;
 int CO2 = 0;
 float Temp_mhz19 = 0;
 bool heater = false;
-VindriktningPM25::SensorState pm25;
+
 int WiFi_reconnect = 0;
 bool notify = false;
 
-MHZ19 mhz19;
-SoftwareSerial mhz19Serial(GPIO_MHZ19_RX, GPIO_MHZ19_TX);
 
 long lastSensorRead = 0;
 
@@ -403,43 +395,16 @@ void setup()
 
   LOG_PRINTLN("init sensors\n");
 
-  mhz19Serial.begin(9600);
 
-  mhz19.begin(mhz19Serial);
-  mhz19.autoCalibration();
-
-  VindriktningPM25::setup();
-
-  LOG_PRINTLN("check for SHT31\n");
-  if (!sht31.begin(0x44))
+  LOG_PRINTLN("check for BME280\n");
+  if (!bme.begin())
   {
-    LOG_PRINTLN("Couldn't find SHT31");
-
-    LOG_PRINTLN("check for BME280\n");
-    if (!bme.begin())
-    {
-      LOG_PRINTLN("Couldn't find bme280");
-      while (1)
-        delay(1);
-    }
-    LOG_PRINTLN("found\n");
+    LOG_PRINTLN("Couldn't find bme280");
+    while (1)
+      delay(1);
   }
-  else
-  {
-    hasSHT31 = true;
-    LOG_PRINTLN("found\n");
+  LOG_PRINTLN("found\n");
 
-    LOG_PRINT("Heater Enabled State: ");
-    heater = sht31.isHeaterEnabled();
-    if (heater)
-    {
-      LOG_PRINTLN("ENABLED");
-    }
-    else
-    {
-      LOG_PRINTLN("DISABLED");
-    }
-  }
   LOG_PRINTLN("sensor initialized");
 
   // Route for root / web page
@@ -497,19 +462,12 @@ void loop()
   }
 */
 
-  // Vindriktning pm25 sensor lesen - unabhaengig von anderen sensoren, da durch externes board gesteuert
-  if(VindriktningPM25::handleUart(pm25)) {
-    Mqtt_refresh = true;
-  }
 
   if (now - lastSensorRead > SENSOR_INTERVAL)
   {
     lastSensorRead = now;
     Mqtt_refresh = true;
 
-    // MHZ19 lesen
-    CO2 = mhz19.getCO2();
-    Temp_mhz19 = mhz19.getTemperature();
 
     float tempRaw, humRaw;
     
@@ -526,9 +484,6 @@ void loop()
       heater = false;
     }
 
-    Pressure += g_state.PressureOffset;
-    Temp = tempRaw + g_state.TempOffset;
-    Hum = calculateRelHumidity(Temp, calculateAbsHumidity(tempRaw, humRaw)) + g_state.HumOffset;
     
     if (!isnan(Temp))
     { // check if 'is not a number'

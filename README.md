@@ -1,5 +1,5 @@
-# ESP8266_Vindrigning
-CO2, Temperatur und Luftfeuchte Messung mit ESP8266 im Vindrigning-Gehäuse
+# D!-mini-DTH11-BMP280
+Temperatur und Luftfeuchte Messung mit DTH11 ( Waschkeller) und Temperatur Messung mit BMP280 ( Vorlauf Heizung)
 
 
 Für die WLAN SSID und Passwort sowie für die Adresse des MQTT Brokers wird der File WLAN_Credentials.h benötigt.
