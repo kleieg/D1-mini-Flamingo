@@ -16,6 +16,9 @@
 
 #include <SPI.h>
 #include <Wire.h>
+#include <Adafruit_BMP280.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
 
 
 #include "Settings.h"
@@ -40,27 +43,22 @@ String Hostname;
 
 // define sensors & values
 
+#define BMP_SCK  (13)
+#define BMP_MISO (12)
+#define BMP_MOSI (11)
+#define BMP_CS   (10)
 
-BME280I2C::Settings settings(
-   BME280::OSR_X1,
-   BME280::OSR_X1,
-   BME280::OSR_X1,
-   BME280::Mode_Forced,
-   BME280::StandbyTime_1000ms,
-   BME280::Filter_Off,
-   BME280::SpiEnable_False,
-   BME280I2C::I2CAddr_0x76 // I2C address. I2C specific.
-);
+Adafruit_BMP280 bmp; // I2C
 
-BME280I2C bme(settings);
-bool hasSHT31 = false;
+#define DHTTYPE    DHT11     // DHT 11
+
+DHT dht(GPIO_DTH11_IN, DHTTYPE);
 
 float Temp = 0;
 float Hum = 0;
+
 float Pressure = 0;
-int CO2 = 0;
-float Temp_mhz19 = 0;
-bool heater = false;
+
 
 int WiFi_reconnect = 0;
 bool notify = false;
@@ -145,8 +143,8 @@ String getOutputStates()
   // sensors
   myArray["cards"][6]["c_text"] = String(Temp);
   myArray["cards"][7]["c_text"] = String(Hum);
-  myArray["cards"][8]["c_text"] = String(CO2);
-  myArray["cards"][9]["c_text"] = String(pm25.avgPM25);
+  myArray["cards"][8]["c_text"] = "43"; //String(CO2);
+  myArray["cards"][9]["c_text"] = "44"; //String(pm25.avgPM25);
   myArray["cards"][10]["c_text"] = String(Pressure);
 
   // configuration
@@ -333,7 +331,7 @@ void initMQTT() {
   LOG_PRINTF("setup MQTT\n");
   
   client.begin(myClient);
-  client.setHost(CREDENTIALS_MQTT_BROKER, 1883);
+  client.setHost(MQTT_BROKER, 1883);
   client.onMessage(MQTT_callback);
   client.setWill(willTopic.c_str(), "Offline", true, 0);
 }
@@ -358,11 +356,12 @@ void MQTTsend()
   {
     sensors["Pressure"] = Pressure;
   }
+  /*
   sensors["PM25"] = pm25.avgPM25;
   if(CO2 > 0) {
     sensors["CO2"] = CO2;
   }
-  
+  */
   actuators["Notify"] = notify;
 
   mqtt_data["Sensors"] = sensors;
@@ -396,15 +395,24 @@ void setup()
   LOG_PRINTLN("init sensors\n");
 
 
-  LOG_PRINTLN("check for BME280\n");
-  if (!bme.begin())
-  {
-    LOG_PRINTLN("Couldn't find bme280");
-    while (1)
-      delay(1);
-  }
-  LOG_PRINTLN("found\n");
+  LOG_PRINTLN("BMP280 Forced Mode Test.");
 
+  //if (!bmp.begin()) {
+  if (!bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID)) {
+    LOG_PRINTLN("Could not find a valid BMP280 sensor, check wiring or try a different address!");
+    while (1) delay(10);
+  }
+
+  /* Default settings from datasheet. */
+  bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+  LOG_PRINTLN("DTH11 init.");
+  dht.begin();
+  
   LOG_PRINTLN("sensor initialized");
 
   // Route for root / web page
@@ -471,19 +479,48 @@ void loop()
 
     float tempRaw, humRaw;
     
-    // SHT30 lesen
-    if (hasSHT31)
-    {
-      tempRaw = sht31.readTemperature();
-      humRaw = sht31.readHumidity();
-      heater = sht31.isHeaterEnabled();
-    }
-    else
-    {
-      bme.read(Pressure, tempRaw, humRaw);
-      heater = false;
-    }
+  // must call this to wake sensor up and get new measurement data
+  // it blocks until measurement is complete
+  if (bmp.takeForcedMeasurement()) {
+    // can now print out the new measurements
+    Serial.print(F("Temperature = "));
+    Serial.print(bmp.readTemperature());
+    Serial.println(" *C");
 
+    Serial.print(F("Pressure = "));
+    Serial.print(bmp.readPressure());
+    Serial.println(" Pa");
+
+    Serial.print(F("Approx altitude = "));
+    Serial.print(bmp.readAltitude(1013.25)); /* Adjusted to local forecast! */
+    Serial.println(" m");
+
+    Serial.println();
+    delay(2000);
+  } else {
+    Serial.println("Forced measurement failed!");
+  }
+
+ // Read temperature as Celsius (the default)
+    float newT = dht.readTemperature();
+    // if temperature read failed, don't change t value
+    if (isnan(newT)) {
+      Serial.println("Failed to read from DHT sensor!");
+    }
+    else {
+      Temp = newT;
+      Serial.println(Temp);
+    }
+    // Read Humidity
+    float newH = dht.readHumidity();
+    // if humidity read failed, don't change h value 
+    if (isnan(newH)) {
+      Serial.println("Failed to read from DHT sensor!");
+    }
+    else {
+      Hum = newH;
+      Serial.println(Hum);
+    }
     
     if (!isnan(Temp))
     { // check if 'is not a number'
