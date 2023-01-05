@@ -24,12 +24,6 @@ function reboot() {
     websocket.send(JSON.stringify({ "action": "reboot" }));
 }
 
-function setSetting(setting, value) {
-    console.log(`Updating setting ${setting}`);
-    var data = {};
-    data[setting] = value;
-    websocket.send(JSON.stringify({ "action": "settings", "data": data }));
-}
 
 function onClose(event) {
     console.log('Connection closed');
@@ -42,28 +36,7 @@ function onMessage(event) {
     for (i in myObj.cards) {
         var c_text = myObj.cards[i].c_text;
         console.log(c_text);
-        var el = document.getElementById(i + "h");
-        if(el.tagName === 'INPUT') {
-            if(document.activeElement != el) {
-                el.value = c_text;
-            }
-        } else {
-            el.innerHTML = c_text;
-        }
-    }
-    for (i in myObj.gpios) {
-        var output = myObj.gpios[i].output;
-        var state = myObj.gpios[i].state;
-        console.log(output);
-        console.log(state);
-        if (state == "1") {
-            document.getElementById(output).checked = true;
-            document.getElementById(output + "s").innerHTML = "ON";
-        }
-        else {
-            document.getElementById(output).checked = false;
-            document.getElementById(output + "s").innerHTML = "OFF";
-        }
+        document.getElementById(i + "h").innerHTML = c_text;
     }
     console.log(event.data);
 }
