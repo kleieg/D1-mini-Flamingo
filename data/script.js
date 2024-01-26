@@ -38,5 +38,32 @@ function onMessage(event) {
         console.log(c_text);
         document.getElementById(i + "h").innerHTML = c_text;
     }
+
+    for (i in myObj.gpios) {
+        var output = myObj.gpios[i].output;
+        var state = myObj.gpios[i].state;
+        console.log(output);
+        console.log(state);
+        if (state == "1") {
+            document.getElementById(output).checked = true;
+            document.getElementById(output + "s").innerHTML = "ON";
+        }
+        else {
+            document.getElementById(output).checked = false;
+            document.getElementById(output + "s").innerHTML = "OFF";
+        }
+    }    
     console.log(event.data);
+}
+
+// Send Requests to Control GPIOs
+function toggleCheckbox(element) {
+    console.log(element.id);
+    websocket.send(JSON.stringify({ "action": "relais", "data": { "relais": +element.id } }));
+    if (element.checked) {
+        document.getElementById(element.id + "s").innerHTML = "ON";
+    }
+    else {
+        document.getElementById(element.id + "s").innerHTML = "OFF";
+    }
 }

@@ -69,6 +69,8 @@ String getOutputStates()
   myArray["cards"][5]["c_text"] = "WiFi = " + String(WiFi_reconnect) + "   MQTT = " + String(Mqtt_reconnect);
   myArray["cards"][6]["c_text"] = " to reboot click ok";
 
+  myArray["gpios"][0]["output"] = String(0);
+  myArray["gpios"][0]["state"] = String(digitalRead(GPIO_switch));
 
   String jsonString = JSON.stringify(myArray);
   LOG_PRINTLN("Refresh Webserver");
@@ -111,6 +113,35 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
     {
       LOG_PRINTLN("Reset..");
       ESP.restart();
+    }
+    else if (!strcmp(json["action"], "relais"))
+    {
+      if (!json.hasOwnProperty("data"))
+      {
+        LOG_PRINTLN("Relais request is missing data, ignoring");
+        return;
+      }
+      if (!json["data"].hasOwnProperty("relais"))
+      {
+        LOG_PRINTLN("Relais request is missing relais number, ignoring");
+        return;
+      }
+      if (JSONVar::typeof_(json["data"]["relais"]) != "number")
+      {
+        LOG_PRINTLN("Relais request contains invali relais number, ignoring");
+        return;
+      }
+      int relais = json["data"]["relais"];
+      if (relais < 0 || relais >= NUM_OUTPUTS)
+      {
+        LOG_PRINTLN("Relais request contains invali relais number, ignoring");
+        return;
+      }
+      
+      digitalWrite(GPIO_switch, !digitalRead(GPIO_switch));
+      notifyClients(getOutputStates());
+      LOG_PRINTLN("switch Relais");
+
     }
   }
 

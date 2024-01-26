@@ -1,6 +1,6 @@
 <!DOCTYPE HTML><html>
 <head>
-  <title>ESP Vindriktning</title>
+  <title>ESP-Flamingo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="style.css">
   <link rel="icon"  type="image/png" href="favicon.png">
@@ -41,6 +41,14 @@
             <p class ="card-text"><span id="6h"></span></p>
             <button onclick="reboot()">OK</button>
         </div>
+        <div class="card">             
+          <p class="card-title">Flamingo</p>
+          <label class="switch">
+              <input type="checkbox" onchange="toggleCheckbox(this)" id="0">
+              <span class="slider"></span>
+          </label>
+          <p class ="state"><span id="0s"></span></p>
+      </div>
     </div>
 </div>
 <script src="/script.js"></script>

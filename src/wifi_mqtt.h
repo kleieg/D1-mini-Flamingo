@@ -9,7 +9,7 @@ int WiFi_reconnect = 0;
 // for MQTT
 long Mqtt_lastSend = 0;
 long lastReconnectAttempt = 0;
-int Mqtt_reconnect = 0;
+int Mqtt_reconnect = -1;
 
 // Initializes the espClient. 
 WiFiClient ethClient;
@@ -23,8 +23,8 @@ void initWiFi() {
   Hostname += WiFi.macAddress();
   Hostname.replace(":", "");
 
-  WiFi.mode(WIFI_STA);
   WiFi.hostname(Hostname);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   LOG_PRINT("Connecting to WiFi ..");
   while (WiFi.status() != WL_CONNECTED) {
