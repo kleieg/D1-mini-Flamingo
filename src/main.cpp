@@ -172,28 +172,32 @@ void onEvent(AsyncWebSocket *Asynserver, AsyncWebSocketClient *client, AwsEventT
 
 
 // receive MQTT messages
-void MQTT_callback(char* topic, byte* message, unsigned int length) {
+void MQTT_call(String &topic, String &payload)  {
   
   LOG_PRINTF("%s","Message arrived on topic: ");
   LOG_PRINTF("%s\n",topic);
   LOG_PRINTF("%s","Data : ");
 
+/*
   String MQTT_message;
   for (unsigned int i = 0; i < length; i++) {
     MQTT_message += (char)message[i];
   }
   LOG_PRINTLN(MQTT_message);
+*/
+
+  LOG_PRINTLN(payload);
 
   String windowTopic = Hostname + "/CMD/Flamingo";
-  String strTopic = String(topic);
+// String strTopic = String(topic);
 
-  if (strTopic == windowTopic ){
+  if (topic == windowTopic ){
 
-    if(MQTT_message == "true"){
+    if(payload == "true"){
       LOG_PRINTF("%s\n", "MQTT switch on");
       digitalWrite(GPIO_switch, HIGH);
     }
-    if(MQTT_message == "false"){
+    if(payload == "false"){
       LOG_PRINTF("%s\n", "MQTT switch off");
       digitalWrite(GPIO_switch, LOW);
     }
@@ -227,7 +231,7 @@ void MQTTsend()
   LOG_PRINTLN("Refresh MQTT");
   LOG_PRINTF("%s\n", mqtt_string.c_str());
 
-  Mqttclient.publish(mqtt_tag.c_str(), mqtt_string.c_str());
+  mqttClient.publish(mqtt_tag.c_str(), mqtt_string.c_str());
 
   notifyClients(getOutputStates());
 }
@@ -242,7 +246,7 @@ void setup()
   pinMode(GPIO_switch, OUTPUT);
   digitalWrite(GPIO_switch, LOW);
 
-   pinMode(GPIO_LED_INTERN, OUTPUT);
+  pinMode(GPIO_LED_INTERN, OUTPUT);
   digitalWrite(GPIO_LED_INTERN, LOW);
 
   LOG_PRINTF("start init\n");
@@ -254,8 +258,8 @@ void setup()
   Asynserver.addHandler(&ws);
 
   LOG_PRINTF("setup MQTT\n");
-  Mqttclient.setServer(MQTT_BROKER, 1883);
-  Mqttclient.setCallback(MQTT_callback);
+  initMQTT();
+  mqttClient.onMessage(MQTT_call);
 
   // Route for root / web page
   LOG_PRINTLN("set Webpage");
@@ -325,7 +329,7 @@ void loop()
 
 
   // check if MQTT broker is still connected
-  if (!Mqttclient.connected()) {
+  if (!mqttClient.connected()) {
     // try reconnect every 5 seconds
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
@@ -335,7 +339,7 @@ void loop()
   } else {
     // Client connected
 
-    Mqttclient.loop();
+    mqttClient.loop();
 
     // send data to MQTT broker
     if (now - Mqtt_lastSend > MQTT_INTERVAL) {
